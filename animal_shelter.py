@@ -4,61 +4,58 @@ from bson.objectid import ObjectId
 class AnimalShelter(object):
     """ CRUD operations for Animal collection in MongoDB """
 
-    def __init__(self,username,password):
-        # Initializing the MongoClient. This helps to 
-        # access the MongoDB databases and collections.
-        # This is hard-wired to use the aac database, the 
-        # animals collection, and the aac user.
-        # Definitions of the connection string variables are
-        # unique to the individual Apporto environment.
-        #
-        # You must edit the connection variables below to reflect
-        # your own instance of MongoDB!
-        #
-        # Connection Variables
-        #
-        #USER = 'briannahrhea'
-        #PASS = 'SNHUCS499Mongo1!'
-        #HOST = 'mongodb+srv://briannahrhea:<db_password>@cluster0.h1z4brd.mongodb.net/'
-        #PORT = 27017
-        #DB = 'AAC'
-        #COL = 'animals'
-        #
-        # Initialize Connection
-        #
+    def __init__(self, username, password):
         uri = f"mongodb+srv://{username}:{password}@cluster0.h1z4brd.mongodb.net/"
         self.client = MongoClient(uri)
         self.database = self.client["AAC"]
         self.collection = self.database["animals"]
 
-# Complete this create method to implement the C in CRUD.
+    # ========== CREATE ==========
     def create(self, data):
-        if data is not None:
+        if isinstance(data, dict):
             result = self.collection.insert_one(data)
             return result.acknowledged
         else:
-            raise Exception("Nothing to save, because data parameter is empty")
+            raise Exception("Data must be a dictionary.")
 
-# Create method to implement the R in CRUD.
+    # ========== READ ==========
     def read(self, data):
         if data is not None:
-            result = self.collection.find(data, { '_id': 0} )
+            result = self.collection.find(data, {'_id': 0})
             return list(result)
         else:
             raise Exception("Search query is empty")
-            
-# Create method to implement the U in CRUD
+
+    # ========== UPDATE ==========
     def update(self, data, change):
-        if data is not None and change is not None:
+        if data and change:
             update_result = self.collection.update_many(data, {"$set": change})
             return update_result.modified_count
         else:
-            raise Exception("Nothing to update, because data parameter is empty")
-            
-# Create method to implement the D in CRUD
+            raise Exception("Invalid update request.")
+
+    # ========== DELETE ==========
     def delete(self, data):
-        if data is not None:
+        if data:
             delete_result = self.collection.delete_many(data)
             return delete_result.deleted_count
         else:
-            raise Exception("Nothing to delete, because data parameter is empty")
+            raise Exception("Nothing to delete.")
+
+    # ========== SAVE BOOKMARK ==========
+    def save_bookmark(self, animal_id, user_id='default_user'):
+        self.database['bookmarks'].insert_one({'user_id': user_id, 'animal_id': animal_id})
+
+    # ========== RETRIEVE BOOKMARK ==========
+    def get_bookmarks(self, user_id='default_user'):
+        bookmarks = list(self.database['bookmarks'].find({'user_id': user_id}))
+        animal_ids = [b['animal_id'] for b in bookmarks]
+        return list(self.collection.find({'animal_id': {'$in': animal_ids}}, {'_id': 0}))
+
+    # ========== REMOVE BOOKMARK ==========
+    def remove_bookmark(self, animal_id, user_id='default_user'):
+        self.database['bookmarks'].delete_one({'user_id': user_id, 'animal_id': animal_id})
+
+    # ========== CLEAR BOOKMARK ==========
+    def clear_all_bookmarks(self, user_id='default_user'):
+        self.database['bookmarks'].delete_many({'user_id': user_id})
